@@ -2,14 +2,13 @@ import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { useAnalysis } from '@/hooks/use-analysis';
-import { GitPullRequest, LogOut, LayoutDashboard } from 'lucide-react';
+import { GitPullRequest, LogOut, LayoutDashboard, FileBarChart2, Printer } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { Button } from '@/components/ui/button';
 import { AnalysisForm } from '@/components/AnalysisForm';
 import { AnalysisResults } from '@/components/AnalysisResults';
 
-// Skeleton Loader for premium feel during async operations
 function AnalysisSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
@@ -30,18 +29,16 @@ export default function Dashboard() {
   const { isAuthenticated, logout } = useAuth();
   const { analyze, isAnalyzing, result } = useAnalysis();
 
-  // Protect Route
   useEffect(() => {
     if (!isAuthenticated) {
       setLocation('/login');
     }
   }, [isAuthenticated, setLocation]);
 
-  if (!isAuthenticated) return null; // Avoid flashing content before redirect
+  if (!isAuthenticated) return null;
 
   return (
     <div className="min-h-screen bg-slate-50/50 flex flex-col">
-      {/* Top Navigation */}
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-white/80 backdrop-blur-md shadow-sm no-print">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -54,7 +51,15 @@ export default function Dashboard() {
               Overview
             </div>
           </div>
-          <div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setLocation('/results')} disabled={!result}>
+              <FileBarChart2 className="h-4 w-4 mr-2" />
+              Results Page
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setLocation('/results/print')} disabled={!result}>
+              <Printer className="h-4 w-4 mr-2" />
+              Report View
+            </Button>
             <Button variant="ghost" size="sm" onClick={logout} className="text-slate-600 hover:text-slate-900 hover:bg-slate-100">
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out
@@ -63,17 +68,13 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left Column: Input Form */}
         <div className="lg:col-span-4 xl:col-span-3 space-y-6">
           <div className="sticky top-24">
             <AnalysisForm onSubmit={analyze} isAnalyzing={isAnalyzing} />
           </div>
         </div>
 
-        {/* Right Column: Results Area */}
         <div className="lg:col-span-8 xl:col-span-9 min-h-[500px]">
           <AnimatePresence mode="wait">
             {isAnalyzing ? (
@@ -113,7 +114,6 @@ export default function Dashboard() {
             )}
           </AnimatePresence>
         </div>
-
       </main>
     </div>
   );

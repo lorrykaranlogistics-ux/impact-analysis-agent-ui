@@ -7,11 +7,14 @@ import NotFound from "@/pages/not-found";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import ResultsPage, { PrintableResultsPage } from "./pages/ResultsPage";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/results" component={ResultsPage} />
+      <Route path="/results/print" component={PrintableResultsPage} />
       <Route path="/login" component={Login} />
       <Route component={NotFound} />
     </Switch>

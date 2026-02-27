@@ -18,6 +18,38 @@ interface AnalysisResultsProps {
   data: AnalysisResponse;
 }
 
+function toReadableLabel(value: string): string {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .trim();
+}
+
+function getClassificationLabel(value: unknown): string | null {
+  if (typeof value === "string") {
+    const label = toReadableLabel(value);
+    return label.length > 0 ? label : null;
+  }
+
+  if (Array.isArray(value)) {
+    const labels = value
+      .map((item) => (typeof item === "string" ? toReadableLabel(item) : null))
+      .filter((item): item is string => Boolean(item));
+    return labels.length > 0 ? labels.join(", ") : null;
+  }
+
+  if (value && typeof value === "object") {
+    const candidate = (value as Record<string, unknown>).type;
+    if (typeof candidate === "string") {
+      const label = toReadableLabel(candidate);
+      return label.length > 0 ? label : null;
+    }
+  }
+
+  if (value == null) return null;
+  return toReadableLabel(String(value));
+}
+
 const containerVariants = {
   hidden: { opacity: 0 },
   show: {
@@ -33,6 +65,9 @@ const itemVariants = {
 
 export function AnalysisResults({ data }: AnalysisResultsProps) {
   const [copied, setCopied] = useState(false);
+  const classificationLabel = getClassificationLabel(
+    (data as unknown as Record<string, unknown>).changeClassification
+  );
 
   const getRiskColor = (level: string) => {
     switch (level) {
@@ -83,9 +118,9 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             <Badge variant="outline" className={`px-2.5 py-0.5 font-semibold ${getRiskColor(data.riskLevel)}`}>
               {data.riskLevel} RISK
             </Badge>
-            {data.changeClassification && (
+            {classificationLabel && (
               <Badge variant="secondary" className="px-2.5 py-0.5 font-medium border border-border">
-                {data.changeClassification.replace(/([A-Z])/g, ' $1').trim()}
+                {classificationLabel}
               </Badge>
             )}
           </div>
