@@ -1,0 +1,113 @@
+
+
+Build a production-style frontend UI for my existing backend app “Impact Analysis Agent”.
+
+Tech requirements:
+- Stack: React + TypeScript + Vite
+- Styling: Tailwind CSS
+- State/data: React Query + Axios
+- Form validation: Zod + React Hook Form
+- Charts: Recharts
+- Routing: React Router
+- Clean component architecture + reusable UI components
+- Mobile responsive + desktop polished dashboard style
+
+Backend base URL:
+- http://localhost:8000
+
+Implement full business logic from backend:
+
+1) Authentication
+- Endpoint: POST /auth/login
+- Request body: { "username": "admin", "password": "admin123" }
+- Response: { "access_token": "...", "token_type": "bearer" }
+- Save token securely in localStorage
+- Add Axios interceptor to send Authorization: Bearer <token>
+- If 401, redirect to login
+
+2) Health checks
+- GET /health (impact-agent)
+- Optional UI status checks for api-gateway health at http://localhost:3000/health
+- Show status pills (UP/DOWN)
+
+3) Analyze PR
+- Endpoint: POST /analyze-pr
+- Request payload:
+  {
+    "repo_url": "https://github.com/<org>/<repo>",
+    "pr_number": 1,
+    "use_llm": false,
+    "run_regression_tests": false,
+    "github_token": "<optional>"
+  }
+- Required fields: repo_url, pr_number
+- Optional fields: github_token
+- Toggles: use_llm, run_regression_tests
+
+4) Handle structured errors from backend
+- Show user-friendly toast + inline error panel
+- Support detail shapes like:
+  - { "detail": "..." }
+  - { "detail": { "message": "...", "code": "..." } }
+- Handle known codes:
+  - invalid_repo_url
+  - github_access_denied
+  - pr_not_found
+  - invalid_pr_payload
+  - invalid_graph_result
+  - rate_limited
+
+5) Render full analysis response sections
+Expected response fields:
+- prNumber
+- changedFiles (list)
+- impactedServices (list)
+- regressionAreas (list)
+- suggestedTests (list)
+- riskScore
+- riskLevel
+- confidence
+- changeClassification
+- dependencyDepth
+- sanityCheckResults
+- regressionTestResults
+
+UI sections:
+- Summary cards (risk score, risk level, confidence, dependency depth)
+- Risk gauge/chart
+- Impacted services chips/list
+- Changed files table
+- Classification badges (breakingChange, schemaChange, logicChange, configChange)
+- Regression areas + suggested tests checklist cards
+- Sanity checks panel (status + checks)
+- Regression test results panel:
+  - status (PASSED/FAILED/SKIPPED/TIMEOUT)
+  - command
+  - summary (passed, failed, errors, skipped)
+  - durationSeconds
+  - outputSnippet (collapsible)
+
+6) UX behavior
+- Loading skeletons while analyzing
+- Disable submit during request
+- Preserve last successful analysis in local storage
+- “Re-run Analysis” button
+- “Copy JSON” and “Download Report” buttons for result payload
+
+7) Report export
+- Generate downloadable JSON report
+- Generate printable HTML/PDF-like report view (client-side print stylesheet)
+
+8) Quality expectations
+- Strict TypeScript types for all API request/response models
+- Separate API layer, hooks layer, components layer
+- No mock data in final code
+- Include .env support:
+  - VITE_API_BASE_URL=http://localhost:8000
+
+Deliverables:
+- Complete runnable project files
+- Clean README with run instructions:
+  - npm install
+  - npm run dev
+- Include screenshots route or sample UI states if possible
