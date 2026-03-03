@@ -1,6 +1,17 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { analyzePrRequestSchema, type AnalyzePrRequest } from '@shared/schema';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
+import {
+  analyzePrRequestSchema,
+  type AnalyzePrRequest,
+  type ProjectSettings,
+  type UpsertProjectSettingsRequest,
+} from '@shared/schema';
+import { api } from '@/lib/api';
+import { api as routesApi } from '@shared/routes';
+import { toast } from '@/hooks/use-toast';
 import { Search, Github, Link as LinkIcon, Settings2, PlayCircle, Loader2 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -15,17 +26,86 @@ interface AnalysisFormProps {
   isAnalyzing: boolean;
 }
 
+const analysisFormSchema = analyzePrRequestSchema.extend({
+  project_name: z.string(),
+});
+type AnalysisFormValues = z.infer<typeof analysisFormSchema>;
+
+const REPO_URL_OPTIONS = [
+  'https://github.com/lorrykaranlogistics-ux/node-example-microservices',
+];
+
 export function AnalysisForm({ onSubmit, isAnalyzing }: AnalysisFormProps) {
-  const form = useForm<AnalyzePrRequest>({
-    resolver: zodResolver(analyzePrRequestSchema),
+  const form = useForm<AnalysisFormValues>({
+    resolver: zodResolver(analysisFormSchema),
     defaultValues: {
-      repo_url: '',
+      project_name: '',
+      repo_url: REPO_URL_OPTIONS[0],
       pr_number: undefined,
       github_token: '',
       use_llm: true,
       run_regression_tests: false,
     },
   });
+
+  const { data: savedSettings } = useQuery<ProjectSettings>({
+    queryKey: ['projectSettings'],
+    queryFn: async () => {
+      const res = await api.get<ProjectSettings>(routesApi.settings.get.path);
+      return res.data;
+    },
+    staleTime: Infinity,
+  });
+
+  const saveSettingsMutation = useMutation({
+    mutationFn: async (payload: UpsertProjectSettingsRequest) => {
+      const res = await api.put<ProjectSettings>(routesApi.settings.upsert.path, payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Settings saved',
+        description: 'Project name and token were stored successfully.',
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (!savedSettings || form.formState.isDirty) return;
+    form.setValue('project_name', savedSettings.project_name ?? '');
+    form.setValue('github_token', savedSettings.github_token ?? '');
+  }, [savedSettings, form]);
+
+  const persistSettings = (values: AnalysisFormValues, silentIfMissing = false) => {
+    const projectName = values.project_name.trim();
+    if (!projectName) {
+      if (!silentIfMissing) {
+        toast({
+          title: 'Project name required',
+          description: 'Enter a project name before saving settings.',
+          variant: 'destructive',
+        });
+      }
+      return;
+    }
+
+    const payload: UpsertProjectSettingsRequest = {
+      project_name: projectName,
+      github_token: values.github_token?.trim() ? values.github_token.trim() : undefined,
+    };
+    saveSettingsMutation.mutate(payload);
+  };
+
+  const handleSubmit = (values: AnalysisFormValues) => {
+    persistSettings(values, true);
+    onSubmit({
+      repo_url: values.repo_url.trim(),
+      pr_number: values.pr_number,
+      use_llm: values.use_llm,
+      run_regression_tests: values.run_regression_tests,
+      github_token: values.github_token?.trim() ? values.github_token.trim() : undefined,
+    });
+  };
 
   return (
     <Card className="border-border/60 shadow-lg shadow-black/5 bg-card/50 backdrop-blur-xl no-print">
@@ -42,10 +122,29 @@ export function AnalysisForm({ onSubmit, isAnalyzing }: AnalysisFormProps) {
       </CardHeader>
       
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <form onSubmit={form.handleSubmit(handleSubmit)}>
           <CardContent className="pt-6 space-y-5">
             {/* Core Inputs */}
             <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="project_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Project Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g. Impact Analysis Agent"
+                        className="h-10 transition-shadow focus-visible:ring-primary/20"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>This name is saved in DB and restored on reload.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="repo_url"
@@ -58,10 +157,17 @@ export function AnalysisForm({ onSubmit, isAnalyzing }: AnalysisFormProps) {
                         <Input 
                           placeholder="https://github.com/owner/repo" 
                           className="pl-9 h-10 transition-shadow focus-visible:ring-primary/20" 
+                          list="repo-url-options"
                           {...field} 
                         />
                       </div>
                     </FormControl>
+                    <datalist id="repo-url-options">
+                      {REPO_URL_OPTIONS.map((repoUrl) => (
+                        <option key={repoUrl} value={repoUrl} />
+                      ))}
+                    </datalist>
+                    <FormDescription>Select the suggested repository URL or paste another one.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -110,6 +216,22 @@ export function AnalysisForm({ onSubmit, isAnalyzing }: AnalysisFormProps) {
                   )}
                 />
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => persistSettings(form.getValues(), false)}
+                disabled={saveSettingsMutation.isPending || isAnalyzing}
+              >
+                {saveSettingsMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving Settings...
+                  </>
+                ) : (
+                  'Save Project Settings'
+                )}
+              </Button>
             </div>
 
             <Separator className="my-4 opacity-50" />

@@ -18,6 +18,19 @@ interface AnalysisResultsProps {
   data: AnalysisResponse;
 }
 
+type ImpactedServiceItem = {
+  serviceName: string;
+  impactLevel: string;
+  reason?: string;
+};
+
+type ChangedFileItem = {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+};
+
 function toReadableLabel(value: string): string {
   return value
     .replace(/[_-]+/g, " ")
@@ -68,6 +81,65 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
   const classificationLabel = getClassificationLabel(
     (data as unknown as Record<string, unknown>).changeClassification
   );
+  const changedFiles: ChangedFileItem[] = ((data as unknown as { changedFiles?: unknown[] }).changedFiles ?? [])
+    .map((file): ChangedFileItem | null => {
+      if (typeof file === "string") {
+        const filename = file.trim();
+        if (!filename) return null;
+        return {
+          filename,
+          status: "modified",
+          additions: 0,
+          deletions: 0,
+        };
+      }
+
+      if (file && typeof file === "object") {
+        const raw = file as Record<string, unknown>;
+        const filename = typeof raw.filename === "string" ? raw.filename.trim() : "";
+        if (!filename) return null;
+        return {
+          filename,
+          status: typeof raw.status === "string" && raw.status.trim() ? raw.status : "modified",
+          additions: typeof raw.additions === "number" ? raw.additions : 0,
+          deletions: typeof raw.deletions === "number" ? raw.deletions : 0,
+        };
+      }
+
+      return null;
+    })
+    .filter((file): file is ChangedFileItem => Boolean(file));
+  const impactedServices: ImpactedServiceItem[] = (
+    (data as unknown as { impactedServices?: unknown[] }).impactedServices ?? []
+  )
+    .map((service): ImpactedServiceItem | null => {
+      if (typeof service === "string") {
+        const serviceName = service.trim();
+        if (!serviceName) return null;
+        return { serviceName, impactLevel: "MEDIUM" };
+      }
+
+      if (service && typeof service === "object") {
+        const raw = service as Record<string, unknown>;
+        const serviceNameCandidate = raw.serviceName ?? raw.name ?? raw.service;
+        const impactLevelCandidate = raw.impactLevel ?? raw.level;
+        const reasonCandidate = raw.reason;
+
+        const serviceName = typeof serviceNameCandidate === "string" ? serviceNameCandidate.trim() : "";
+        if (!serviceName) return null;
+
+        return {
+          serviceName,
+          impactLevel: typeof impactLevelCandidate === "string" && impactLevelCandidate.trim()
+            ? impactLevelCandidate
+            : "MEDIUM",
+          reason: typeof reasonCandidate === "string" && reasonCandidate.trim() ? reasonCandidate : undefined,
+        };
+      }
+
+      return null;
+    })
+    .filter((service): service is ImpactedServiceItem => Boolean(service));
 
   const getRiskColor = (level: string) => {
     switch (level) {
@@ -191,7 +263,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               <Tag className="w-4 h-4" />
             </div>
             <div className="flex items-baseline space-x-2">
-              <span className="text-4xl font-bold font-display">{data.impactedServices.length}</span>
+              <span className="text-4xl font-bold font-display">{impactedServices.length}</span>
             </div>
             <p className="text-xs text-muted-foreground mt-4 pt-1 border-t">Total affected boundaries</p>
           </CardContent>
@@ -221,7 +293,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {data.changedFiles.map((file, i) => (
+                    {changedFiles.map((file, i) => (
                       <TableRow key={i} className="hover:bg-slate-50">
                         <TableCell className="font-mono text-xs">{file.filename}</TableCell>
                         <TableCell>
@@ -298,7 +370,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               </CardHeader>
               <CardContent className="p-4">
                 <div className="flex flex-wrap gap-2">
-                  {data.impactedServices.map((service, i) => (
+                  {impactedServices.map((service, i) => (
                     <div key={i} className="border border-border rounded-lg p-3 w-full bg-white shadow-sm flex items-center justify-between">
                       <div>
                         <span className="font-medium text-sm">{service.serviceName}</span>
@@ -312,7 +384,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       </Badge>
                     </div>
                   ))}
-                  {data.impactedServices.length === 0 && (
+                  {impactedServices.length === 0 && (
                     <p className="text-sm text-muted-foreground italic">No specific services identified.</p>
                   )}
                 </div>

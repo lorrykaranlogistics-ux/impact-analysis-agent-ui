@@ -77,7 +77,19 @@ export const loginResponseSchema = z.object({
   token_type: z.string(),
 });
 
+export const projectSettingsSchema = z.object({
+  project_name: z.string(),
+  github_token: z.string().nullable(),
+});
+
+export const upsertProjectSettingsSchema = z.object({
+  project_name: z.string().min(1, "Project name is required"),
+  github_token: z.string().optional(),
+});
+
 export type AnalysisResponse = z.infer<typeof analysisResponseSchema>;
 export type AnalyzePrRequest = z.infer<typeof analyzePrRequestSchema>;
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
+export type ProjectSettings = z.infer<typeof projectSettingsSchema>;
+export type UpsertProjectSettingsRequest = z.infer<typeof upsertProjectSettingsSchema>;

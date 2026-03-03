@@ -3,7 +3,9 @@ import {
   loginRequestSchema, 
   loginResponseSchema, 
   analyzePrRequestSchema, 
-  analysisResponseSchema 
+  analysisResponseSchema,
+  projectSettingsSchema,
+  upsertProjectSettingsSchema,
 } from './schema';
 
 export const errorSchemas = {
@@ -49,6 +51,27 @@ export const api = {
         400: errorSchemas.validation,
         401: errorSchemas.unauthorized,
         429: errorSchemas.generic,
+        500: errorSchemas.generic,
+      },
+    },
+  },
+  settings: {
+    get: {
+      method: 'GET' as const,
+      path: '/project-settings' as const,
+      responses: {
+        200: projectSettingsSchema,
+        401: errorSchemas.unauthorized,
+      },
+    },
+    upsert: {
+      method: 'PUT' as const,
+      path: '/project-settings' as const,
+      input: upsertProjectSettingsSchema,
+      responses: {
+        200: projectSettingsSchema,
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
         500: errorSchemas.generic,
       },
     },
